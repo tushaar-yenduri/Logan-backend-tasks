@@ -19,3 +19,20 @@ def read(user_id: str):
 def delete(user_id: str):
     delete_user(user_id)
     return {"message": "deleted"}
+
+
+@router.put("/{user_id}", response_model=UserResponse)
+def replace(user_id: str, user: UserCreate):
+    updated = update_user(user_id, user.dict())
+    return get_user(user_id)
+
+@router.patch("/{user_id}", response_model=UserResponse)
+def patch(user_id: str, user: UserUpdate):
+    data = user.dict(exclude_unset=True)
+
+    if not data:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    update_user(user_id, data)
+    return get_user(user_id)
+

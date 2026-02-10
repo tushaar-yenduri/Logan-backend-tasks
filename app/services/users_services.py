@@ -24,3 +24,17 @@ def get_user(user_id: str):
 
 def delete_user(user_id: str):
     table.delete_item(Key={"user_id": user_id})
+
+def update_user(user_id: str, data: dict):
+    update_expression = []
+    expression_values = {}
+
+    for key, value in data.items():
+        update_expression.append(f"{key} = :{key}")
+        expression_values[f":{key}"] = value
+
+    table.update_item(
+        Key={"user_id": user_id},
+        UpdateExpression="SET " + ", ".join(update_expression),
+        ExpressionAttributeValues=expression_values,
+    )
