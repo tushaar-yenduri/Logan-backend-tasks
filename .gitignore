@@ -15,7 +15,7 @@ ENV/
 # NEVER commit your actual .env file containing API keys/AWS secrets
 .env
 .env.*
-!.env.template
+.env.template
 
 # --- Distribution / Builds ---
 build/
