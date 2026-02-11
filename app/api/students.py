@@ -1,32 +1,29 @@
 from fastapi import APIRouter, HTTPException
-from app.models.students_model import Student
+from app.models.students_model import StudentCreate, StudentUpdate, StudentResponse
 from app.services.students_service import StudentService
 
-# 1. Create the router (This was missing/wrong in your error)
 router = APIRouter()
-
-# 2. Initialize the service
 student_service = StudentService()
 
-# CREATE
+# CREATE: Uses StudentCreate (No ID required from user)
 @router.post("/", response_model=dict)
-def create_student(student: Student):
+def create_student(student: StudentCreate):
     return student_service.create_student(student)
 
-# READ
-@router.get("/{student_id}", response_model=Student)
+# READ: Returns StudentResponse (Includes ID)
+@router.get("/{student_id}", response_model=StudentResponse)
 def get_student(student_id: str):
     student = student_service.get_student(student_id)
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
     return student
 
-# UPDATE
+# UPDATE: Uses StudentUpdate (Optional fields)
 @router.put("/{student_id}")
-def update_student(student_id: str, student: Student):
+def update_student(student_id: str, student: StudentUpdate):
     return student_service.update_student(student_id, student)
 
-# DELETE
+# DELETE: No DTO needed
 @router.delete("/{student_id}")
 def delete_student(student_id: str):
     return student_service.delete_student(student_id)
