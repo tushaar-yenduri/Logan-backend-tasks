@@ -29,17 +29,16 @@ def get_all_employees_model():
 def update_employee_model(emp_id, data):
     table.update_item(
         Key={"emp_id": emp_id},
-        UpdateExpression="SET #n=:n, #r=:r, salary=:s",
+        UpdateExpression="SET #r=:r, salary=:s",
         ExpressionAttributeNames={
-            "#n": "name",
             "#r": "role"
         },
         ExpressionAttributeValues={
-            ":n": data["name"],
             ":r": data["role"],
             ":s": data["salary"]
         }
     )
+
 
 
 def delete_employee_model(emp_id):

@@ -1,9 +1,20 @@
+import uuid
 from app.models.employees_model import *
 
 
-def create_employee_service(emp):
-    create_employee_model(emp.dict())
-    return {"message": "Employee created successfully"}
+def create_employee_service(dto):
+    emp_id = str(uuid.uuid4())
+
+    employee_data = {
+        "emp_id": emp_id,
+        "name": dto.name,
+        "role": dto.role,
+        "salary": dto.salary
+    }
+
+    create_employee_model(employee_data)
+
+    return employee_data
 
 
 def get_employee_service(emp_id):
@@ -20,9 +31,18 @@ def get_all_employees_service():
     return response.get("Items", [])
 
 
-def update_employee_service(emp_id, emp):
-    update_employee_model(emp_id, emp.dict())
-    return {"message": "Employee updated successfully"}
+def update_employee_service(emp_id, dto):
+
+    updated_data = {
+        "role": dto.role,
+        "salary": dto.salary
+    }
+
+    update_employee_model(emp_id, updated_data)
+
+    # Return updated employee
+    response = get_employee_model(emp_id)
+    return response["Item"]
 
 
 def delete_employee_service(emp_id):
