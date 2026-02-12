@@ -1,10 +1,10 @@
 import boto3
 import os
-import uuid  # <--- NEW IMPORT
+import uuid
 from decimal import Decimal
 from dotenv import load_dotenv
 from botocore.exceptions import ClientError
-from app.models.students_model import StudentCreate, StudentUpdate, StudentResponse # <--- UPDATED IMPORTS
+from app.models.students_model import StudentCreate, StudentPut, StudentPatch
 
 load_dotenv()
 
@@ -19,6 +19,7 @@ class StudentService:
         self.table = self.dynamodb.Table(os.getenv("DYNAMODB_TABLE", "students"))
 
     def _decimal_to_native(self, obj):
+        """Helper to convert DynamoDB Decimal types to standard Python types."""
         if isinstance(obj, list):
             return [self._decimal_to_native(i) for i in obj]
         if isinstance(obj, dict):
@@ -27,75 +28,73 @@ class StudentService:
             return int(obj) if obj % 1 == 0 else float(obj)
         return obj
 
-    # --- UPDATED CREATE METHOD ---
     def create_student(self, student: StudentCreate):
-        # Generate a unique ID automatically
         new_id = str(uuid.uuid4())
-        
-        # Convert the DTO to a dictionary
         student_data = student.model_dump()
-        
-        # Add the ID to the data
         student_data["student_id"] = new_id
-
+        
         try:
             self.table.put_item(Item=student_data)
-            return {"message": "Student added", "student_id": new_id}
+            return {"message": "Student created", "student_id": new_id, "data": student_data}
         except ClientError as e:
             return {"error": str(e)}
 
-    # --- UPDATED GET METHOD ---
     def get_student(self, student_id: str):
         try:
             response = self.table.get_item(Key={"student_id": student_id})
             item = response.get("Item")
-            if item:
-                return self._decimal_to_native(item)
-            return None
+            return self._decimal_to_native(item) if item else None
         except ClientError as e:
+            print(f"Error: {e}")
             return None
 
-    # --- UPDATED UPDATE METHOD ---
-    def update_student(self, student_id: str, student: StudentUpdate):
-        # We only want to update fields that the user actually sent (not None values)
+    # --- PUT: Full Replacement ---
+    def replace_student(self, student_id: str, student: StudentPut):
+        """Replaces the entire student record with new data (Idempotent)."""
+        student_data = student.model_dump()
+        student_data["student_id"] = student_id  # Ensure ID stays the same
+
+        try:
+            # put_item overwrites by default
+            self.table.put_item(Item=student_data)
+            return {"message": "Student replaced successfully", "data": student_data}
+        except ClientError as e:
+            return {"error": str(e)}
+
+    # --- PATCH: Partial Update ---
+    def patch_student(self, student_id: str, student: StudentPatch):
+        """Updates only the fields provided in the request."""
+        # Filter out None values so we don't overwrite existing data with nulls
         update_data = student.model_dump(exclude_unset=True)
 
         if not update_data:
-            return {"message": "No fields provided for update"}
+            return {"message": "No changes provided"}
 
-        # Build the dynamic UpdateExpression
         update_expression = "set "
         expression_values = {}
         expression_names = {}
 
         for key, value in update_data.items():
-            # Handle reserved words like 'name'
-            attr_name = f"#{key}" if key == "name" else key
-            attr_val = f":{key}"
+            attr_key = f"#{key}"  # Use placeholder for attribute name
+            val_key = f":{key}"   # Use placeholder for value
             
-            update_expression += f"{attr_name} = {attr_val}, "
-            expression_values[attr_val] = value
-            if key == "name":
-                expression_names["#name"] = "name"
+            update_expression += f"{attr_key} = {val_key}, "
+            expression_values[val_key] = value
+            expression_names[attr_key] = key
 
         # Remove trailing comma
         update_expression = update_expression.rstrip(", ")
 
         try:
-            params = {
-                "Key": {"student_id": student_id},
-                "UpdateExpression": update_expression,
-                "ExpressionAttributeValues": expression_values,
-                "ReturnValues": "UPDATED_NEW"
-            }
-            # Only add ExpressionAttributeNames if we used it (for reserved words)
-            if expression_names:
-                params["ExpressionAttributeNames"] = expression_names
-
-            response = self.table.update_item(**params)
-            
-            updated_attributes = self._decimal_to_native(response.get("Attributes"))
-            return {"message": "Student updated", "updated": updated_attributes}
+            response = self.table.update_item(
+                Key={"student_id": student_id},
+                UpdateExpression=update_expression,
+                ExpressionAttributeNames=expression_names,
+                ExpressionAttributeValues=expression_values,
+                ReturnValues="ALL_NEW"
+            )
+            updated_data = self._decimal_to_native(response.get("Attributes"))
+            return {"message": "Student patched successfully", "data": updated_data}
         except ClientError as e:
             return {"error": str(e)}
 
