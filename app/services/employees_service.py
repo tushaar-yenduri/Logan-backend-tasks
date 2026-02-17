@@ -31,18 +31,42 @@ def get_all_employees_service():
     return response.get("Items", [])
 
 
+# PUT → Full Update
 def update_employee_service(emp_id, dto):
 
+    response = get_employee_model(emp_id)
+    if "Item" not in response:
+        return None
+
     updated_data = {
+        "name": dto.name,
         "role": dto.role,
         "salary": dto.salary
     }
 
     update_employee_model(emp_id, updated_data)
 
-    # Return updated employee
+    return updated_data | {"emp_id": emp_id}
+
+
+# PATCH → Partial Update
+def patch_employee_service(emp_id, dto):
+
     response = get_employee_model(emp_id)
-    return response["Item"]
+    if "Item" not in response:
+        return None
+
+    existing_data = response["Item"]
+
+    updated_data = {
+        "name": dto.name if dto.name is not None else existing_data["name"],
+        "role": dto.role if dto.role is not None else existing_data["role"],
+        "salary": dto.salary if dto.salary is not None else existing_data["salary"],
+    }
+
+    update_employee_model(emp_id, updated_data)
+
+    return updated_data | {"emp_id": emp_id}
 
 
 def delete_employee_service(emp_id):
