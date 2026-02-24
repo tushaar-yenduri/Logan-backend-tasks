@@ -29,7 +29,15 @@ def get_all_employees_model():
 def update_employee_model(emp_id, data):
     table.update_item(
         Key={"emp_id": emp_id},
-        UpdateExpression="SET #n=:n, #r=:r, salary=:s",
+        UpdateExpression="""
+        SET #n=:n,
+            #r=:r,
+            salary=:s,
+            department=:d,
+            email=:e,
+            joining_date=:j,
+            is_active=:a
+        """,
         ExpressionAttributeNames={
             "#n": "name",
             "#r": "role"
@@ -37,7 +45,11 @@ def update_employee_model(emp_id, data):
         ExpressionAttributeValues={
             ":n": data["name"],
             ":r": data["role"],
-            ":s": data["salary"]
+            ":s": data["salary"],
+            ":d": data["department"],
+            ":e": data["email"],
+            ":j": data["joining_date"],
+            ":a": data["is_active"]
         }
     )
 
