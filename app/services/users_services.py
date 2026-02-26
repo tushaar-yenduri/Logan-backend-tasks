@@ -18,12 +18,15 @@ def create_user(data: dict):
     table.put_item(Item=item)
     return item
 
+
 def get_user(user_id: str):
     response = table.get_item(Key={"user_id": user_id})
     return response.get("Item")
 
+
 def delete_user(user_id: str):
     table.delete_item(Key={"user_id": user_id})
+
 
 def update_user(user_id: str, data: dict):
     update_expression = []
@@ -41,4 +44,3 @@ def update_user(user_id: str, data: dict):
         ExpressionAttributeValues=expression_values,
         ExpressionAttributeNames=expression_names,
     )
-
