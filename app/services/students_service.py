@@ -1,17 +1,27 @@
-import boto3
+"""
+Student service module for DynamoDB operations.
+"""
 import os
 import uuid
 from decimal import Decimal
-from dotenv import load_dotenv
+from typing import Optional
+
+import boto3
 from botocore.exceptions import ClientError
-from app.models.students_model import StudentCreate, StudentPut, StudentPatch
+from dotenv import load_dotenv
+
+from app.models.students_model import StudentCreate, StudentPatch, StudentPut
 
 load_dotenv()
 
+
 class StudentService:
+    """Service class for managing student data in DynamoDB."""
+
     def __init__(self):
+        """Initialize the DynamoDB resource and table."""
         self.dynamodb = boto3.resource(
-            "dynamodb", 
+            "dynamodb",
             region_name=os.getenv("AWS_REGION", "us-east-1"),
             aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
             aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY")
@@ -19,7 +29,15 @@ class StudentService:
         self.table = self.dynamodb.Table(os.getenv("DYNAMODB_TABLE", "students"))
 
     def _decimal_to_native(self, obj):
-        """Helper to convert DynamoDB Decimal types to standard Python types."""
+        """
+        Convert DynamoDB Decimal types to standard Python types.
+
+        Args:
+            obj: Object to convert.
+
+        Returns:
+            Converted object with Decimal values replaced.
+        """
         if isinstance(obj, list):
             return [self._decimal_to_native(i) for i in obj]
         if isinstance(obj, dict):
@@ -29,17 +47,35 @@ class StudentService:
         return obj
 
     def create_student(self, student: StudentCreate):
+        """
+        Create a new student record.
+
+        Args:
+            student: StudentCreate model instance.
+
+        Returns:
+            Dictionary with creation status and student data.
+        """
         new_id = str(uuid.uuid4())
         student_data = student.model_dump()
         student_data["student_id"] = new_id
-        
+
         try:
             self.table.put_item(Item=student_data)
             return {"message": "Student created", "student_id": new_id, "data": student_data}
         except ClientError as e:
             return {"error": str(e)}
 
-    def get_student(self, student_id: str):
+    def get_student(self, student_id: str) -> Optional[dict]:
+        """
+        Get a student by ID.
+
+        Args:
+            student_id: The student's unique identifier.
+
+        Returns:
+            Student data dictionary or None if not found.
+        """
         try:
             response = self.table.get_item(Key={"student_id": student_id})
             item = response.get("Item")
@@ -50,7 +86,16 @@ class StudentService:
 
     # --- PUT: Full Replacement ---
     def replace_student(self, student_id: str, student: StudentPut):
-        """Replaces the entire student record with new data (Idempotent)."""
+        """
+        Replace the entire student record with new data (Idempotent).
+
+        Args:
+            student_id: The student's unique identifier.
+            student: StudentPut model instance with complete student data.
+
+        Returns:
+            Dictionary with replacement status and updated data.
+        """
         student_data = student.model_dump()
         student_data["student_id"] = student_id  # Ensure ID stays the same
 
@@ -63,7 +108,16 @@ class StudentService:
 
     # --- PATCH: Partial Update ---
     def patch_student(self, student_id: str, student: StudentPatch):
-        """Updates only the fields provided in the request."""
+        """
+        Update only the fields provided in the request.
+
+        Args:
+            student_id: The student's unique identifier.
+            student: StudentPatch model instance with partial student data.
+
+        Returns:
+            Dictionary with patch status and updated data.
+        """
         # Filter out None values so we don't overwrite existing data with nulls
         update_data = student.model_dump(exclude_unset=True)
 
@@ -76,8 +130,8 @@ class StudentService:
 
         for key, value in update_data.items():
             attr_key = f"#{key}"  # Use placeholder for attribute name
-            val_key = f":{key}"   # Use placeholder for value
-            
+            val_key = f":{key}"  # Use placeholder for value
+
             update_expression += f"{attr_key} = {val_key}, "
             expression_values[val_key] = value
             expression_names[attr_key] = key
@@ -99,6 +153,15 @@ class StudentService:
             return {"error": str(e)}
 
     def delete_student(self, student_id: str):
+        """
+        Delete a student record.
+
+        Args:
+            student_id: The student's unique identifier.
+
+        Returns:
+            Dictionary with deletion status.
+        """
         try:
             self.table.delete_item(Key={"student_id": student_id})
             return {"message": "Student deleted"}
