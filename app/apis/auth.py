@@ -1,14 +1,31 @@
+"""Authentication API endpoints for registration and login."""
+
 from fastapi import APIRouter, HTTPException, status
 
-from app.core.security import create_access_token, get_password_hash, verify_password
-from app.models.auth_model import RegisterRequest, RegisterResponse, TokenRequest, TokenResponse
-from app.services.auth_services import create_auth_user, ensure_auth_users_table, get_auth_user_by_username
+from app.core.security import (
+    create_access_token,
+    get_password_hash,
+    verify_password,
+)
+from app.models.auth_model import (
+    RegisterRequest,
+    RegisterResponse,
+    TokenRequest,
+    TokenResponse,
+)
+from app.services.auth_services import (
+    create_auth_user,
+    ensure_auth_users_table,
+    get_auth_user_by_username,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=RegisterResponse)
-def register(payload: RegisterRequest):
+def register(payload: RegisterRequest) -> RegisterResponse:
+    """Register a new authentication user."""
+
     ensure_auth_users_table()
 
     existing = get_auth_user_by_username(payload.username)
@@ -28,15 +45,17 @@ def register(payload: RegisterRequest):
     if created is None:
         raise HTTPException(status_code=400, detail="Unable to create user")
 
-    return {
-        "user_id": created["user_id"],
-        "username": created["username"],
-        "role": created["role"],
-    }
+    return RegisterResponse(
+        user_id=created["user_id"],
+        username=created["username"],
+        role=created["role"],
+    )
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(payload: TokenRequest):
+def login(payload: TokenRequest) -> TokenResponse:
+    """Issue an access token for a valid username/password pair."""
+
     ensure_auth_users_table()
 
     user = get_auth_user_by_username(payload.username)
@@ -55,8 +74,10 @@ def login(payload: TokenRequest):
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    access_token = create_access_token({
-        "user_id": user["user_id"],
-        "role": user.get("role", "user"),
-    })
-    return {"access_token": access_token, "token_type": "bearer"}
+    access_token = create_access_token(
+        {
+            "user_id": user["user_id"],
+            "role": user.get("role", "user"),
+        }
+    )
+    return TokenResponse(access_token=access_token, token_type="bearer")

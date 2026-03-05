@@ -1,0 +1,5 @@
+[MAIN]
+# Ensure the project root is on sys.path so that 'app.*' imports
+# resolve correctly when running pylint from the repository root.
+init-hook='import sys, os; sys.path.append(os.getcwd())'
+

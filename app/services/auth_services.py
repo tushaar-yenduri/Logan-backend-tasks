@@ -1,7 +1,9 @@
-import boto3
+"""Service functions for working with authentication users in DynamoDB."""
+
 import os
 import uuid
 
+import boto3
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
@@ -15,6 +17,8 @@ auth_table = dynamodb.Table("auth_users")
 
 
 def ensure_auth_users_table() -> None:
+    """Create the auth_users table if it does not already exist."""
+
     client = dynamodb.meta.client
 
     try:
@@ -42,12 +46,16 @@ def ensure_auth_users_table() -> None:
     client.get_waiter("table_exists").wait(TableName="auth_users")
 
 
-def get_auth_user_by_id(user_id: str):
+def get_auth_user_by_id(user_id: str) -> dict | None:
+    """Return a user from auth_users table by ID."""
+
     response = auth_table.get_item(Key={"user_id": user_id})
     return response.get("Item")
 
 
-def get_auth_user_by_username(username: str):
+def get_auth_user_by_username(username: str) -> dict | None:
+    """Return a user from auth_users table by username."""
+
     response = auth_table.query(
         IndexName="username-index",
         KeyConditionExpression=Key("username").eq(username),
@@ -57,7 +65,9 @@ def get_auth_user_by_username(username: str):
     return items[0] if items else None
 
 
-def create_auth_user(username: str, password_hash: str, role: str = "user"):
+def create_auth_user(username: str, password_hash: str, role: str = "user") -> dict | None:
+    """Create a new auth user with the given credentials."""
+
     user_id = str(uuid.uuid4())
     item = {
         "user_id": user_id,
@@ -71,7 +81,7 @@ def create_auth_user(username: str, password_hash: str, role: str = "user"):
             Item=item,
             ConditionExpression="attribute_not_exists(user_id)",
         )
-    except ClientError as exc:
+    except ClientError as exc:  # pylint: disable=broad-exception-caught
         if exc.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException":
             return None
         raise
