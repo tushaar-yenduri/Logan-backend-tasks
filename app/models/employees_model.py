@@ -1,5 +1,5 @@
-import boto3
 import os
+import boto3
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -15,6 +15,7 @@ table = dynamodb.Table(TABLE_NAME)
 
 
 def create_employee_model(data):
+    """Insert employee record into DynamoDB."""
     table.put_item(Item=data)
 
 

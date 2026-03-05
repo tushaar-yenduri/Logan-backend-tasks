@@ -10,6 +10,7 @@ class LoginDTO(BaseModel):
 
 @router.post("/login")
 def login(dto: LoginDTO):
+    """Authenticate user and return JWT token."""
 
     # Dummy check (replace with DB later)
     if dto.username != "admin" or dto.password != "admin":

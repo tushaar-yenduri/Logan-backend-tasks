@@ -1,3 +1,7 @@
+"""
+Main entry point for Employees API application.
+Initializes FastAPI and includes routers.
+"""
 from fastapi import FastAPI
 from app.api.employees import router as employees_router
 from app.api.auth import router as auth_router   # ✅ add this

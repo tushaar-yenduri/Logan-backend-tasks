@@ -1,3 +1,7 @@
+"""
+Authentication routes.
+Handles JWT login and token generation.
+"""
 import os
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
