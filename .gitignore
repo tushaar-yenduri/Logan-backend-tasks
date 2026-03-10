@@ -1,0 +1,34 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# --- Virtual Environments ---
+# It is best practice to ignore the actual venv folder
+venv/
+.venv/
+env/
+ENV/
+
+# --- Environment Variables (Security) ---
+# NEVER commit your actual .env file containing API keys/AWS secrets
+.env
+.env.*
+.env.template
+
+# --- Distribution / Builds ---
+build/
+dist/
+*.egg-info/
+
+# --- IDE Settings (Optional but recommended) ---
+.vscode/
+.idea/
+
+# --- OS Generated Files ---
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
