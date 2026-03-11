@@ -1,5 +1,3 @@
-"""Service functions for working with authentication users in DynamoDB."""
-
 import os
 import uuid
 

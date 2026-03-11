@@ -1,4 +1,3 @@
-"""Service functions for user CRUD operations backed by DynamoDB."""
 
 import os
 import uuid
@@ -17,7 +16,7 @@ table = dynamodb.Table(TABLE_NAME)
 
 
 def create_user(data: dict) -> dict:
-    """Create a new user item in DynamoDB and return the created item."""
+    """Create a new user item in DynamoDB"""
 
     user_id = str(uuid.uuid4())
     item = {"user_id": user_id, **data}
