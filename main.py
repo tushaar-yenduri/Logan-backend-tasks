@@ -1,58 +1,114 @@
+from typing import Any
+
 from fastapi import FastAPI, HTTPException
-from typing import List
-from models import StudentCreate, StudentUpdate, StudentResponse
-import crud
-from database import close_connection
-from contextlib import asynccontextmanager
+from pydantic import BaseModel, Field
+from pymongo import MongoClient
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    yield
-    close_connection()
 
-app = FastAPI(title="Student Management API", lifespan=lifespan)
+app = FastAPI(title="Student CRUD API")
 
-@app.post("/students/", response_model=StudentResponse, status_code=201)
-def add_student(student: StudentCreate):
-    """
-    Endpoint to create a new student.
-    """
-    result = crud.create_student(student)
-    if result and "error" in result:
-        raise HTTPException(status_code=400, detail=result["error"])
-    if not result:
-        raise HTTPException(status_code=500, detail="Could not create student")
-    return result
+print("CRUD API started")
+# Update this connection string if your MongoDB server is running elsewhere.
+client = MongoClient("mongodb://localhost:27017/")
+db = client["school_db"]
+students_collection = db["students"]
 
-@app.get("/students/", response_model=List[StudentResponse])
-def read_all_students():
-    """
-    Endpoint to fetch all students.
-    """
-    return crud.get_all_students()
 
-@app.put("/students/{student_id}", response_model=StudentResponse)
-def update_student(student_id: str, student_update: StudentUpdate):
-    """
-    Endpoint to update a student's course or skills.
-    """
-    result = crud.update_student(student_id, student_update)
-    if not result:
+class StudentCreate(BaseModel):
+    name: str = Field(..., example="John Doe")
+    age: int = Field(..., example=20)
+    grade: str = Field(..., example="A")
+    email: str = Field(..., example="john.doe@example.com")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "name": "John Doe",
+                "age": 20,
+                "grade": "A",
+                "email": "john.doe@example.com",
+            }
+        }
+    }
+
+
+class StudentUpdate(BaseModel):
+    age: int | None = Field(default=None, example=21)
+    grade: str | None = Field(default=None, example="A+")
+    email: str | None = Field(default=None, example="john.updated@example.com")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "age": 21,
+                "grade": "A+",
+                "email": "john.updated@example.com",
+            }
+        }
+    }
+
+
+def serialize_student(student: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": str(student["_id"]),
+        "name": student["name"],
+        "age": student["age"],
+        "grade": student["grade"],
+        "email": student["email"],
+    }
+
+
+@app.get("/")
+def root() -> dict[str, str]:
+    return {
+        "message": "Student CRUD API is running. Open /docs for Swagger UI.",
+    }
+
+
+@app.post("/students")
+def create_student(student: StudentCreate) -> dict[str, Any]:
+    existing_student = students_collection.find_one({"name": student.name})
+    if existing_student:
+        raise HTTPException(status_code=400, detail="Student with this name already exists")
+
+    result = students_collection.insert_one(student.model_dump())
+    created_student = students_collection.find_one({"_id": result.inserted_id})
+    return {
+        "message": "Student created successfully",
+        "student": serialize_student(created_student),
+    }
+
+
+@app.get("/students")
+def get_all_students() -> dict[str, list[dict[str, Any]]]:
+    students = [serialize_student(student) for student in students_collection.find()]
+    return {"students": students}
+
+
+@app.put("/students/{name}")
+def update_student(name: str, student: StudentUpdate) -> dict[str, Any]:
+    update_data = {key: value for key, value in student.model_dump().items() if value is not None}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields provided for update")
+
+    result = students_collection.update_one({"name": name}, {"$set": update_data})
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Student not found")
-    if isinstance(result, dict) and "error" in result:
-         raise HTTPException(status_code=400, detail=result["error"])
-    return result
 
-@app.delete("/students/{student_id}")
-def delete_student(student_id: str):
-    """
-    Endpoint to delete a student.
-    """
-    success = crud.delete_student(student_id)
-    if not success:
+    updated_student = students_collection.find_one({"name": name})
+    return {
+        "message": "Student updated successfully",
+        "student": serialize_student(updated_student),
+    }
+
+
+@app.delete("/students/{name}")
+def delete_student(name: str) -> dict[str, str]:
+    result = students_collection.delete_one({"name": name})
+    if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Student not found")
+
     return {"message": "Student deleted successfully"}
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
