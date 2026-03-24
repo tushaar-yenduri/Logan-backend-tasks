@@ -11,6 +11,7 @@ from app.services.students_service import (
 
 router = APIRouter()
 
+
 @router.get("/students/{name}")
 def get_student(
     name: str, service: StudentService = Depends(get_student_service)
@@ -37,6 +38,25 @@ def create_student(
 
 @router.put("/students/{name}")
 def update_student(
+    name: str,
+    student: StudentUpdate,
+    service: StudentService = Depends(get_student_service),
+) -> dict[str, object]:
+    try:
+        updated_student = service.update_student(name, student)
+    except NoUpdateFieldsError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except StudentNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    return {
+        "message": "Student updated successfully",
+        "student": updated_student,
+    }
+
+
+@router.patch("/students/{name}")
+def patch_student(
     name: str,
     student: StudentUpdate,
     service: StudentService = Depends(get_student_service),
