@@ -4,11 +4,7 @@ from typing import Any
 
 from pymongo.collection import Collection
 
-from app.models.students_model import (
-    StudentCreate,
-    StudentResponse,
-    StudentUpdate,
-)
+from app.models.students_model import StudentCreate, StudentDTO, StudentUpdate
 
 
 class StudentAlreadyExistsError(Exception):
@@ -27,27 +23,35 @@ class StudentService:
     def __init__(self, collection: Collection) -> None:
         self._collection = collection
 
-    def _serialize(self, student: dict[str, Any]) -> StudentResponse:
-        return StudentResponse(
-            id=str(student["_id"]),
-            name=student["name"],
-            age=student["age"],
-            grade=student["grade"],
-            email=student["email"],
+    def _serialize(self, student: dict[str, Any]) -> StudentDTO:
+        return StudentDTO(
+            student_id=str(student.get("_id", "")),
+            name=student.get("name", ""),
+            age=student.get("age", 0),
+            course=student.get("course", "Unknown"),
+            skills=student.get("skills", []),
         )
 
-    def create_student(self, payload: StudentCreate) -> StudentResponse:
-        if self._collection.find_one({"name": payload.name}):
+    def create_student(self, payload: StudentDTO) -> StudentDTO:
+        new_student = StudentCreate(**payload.model_dump(exclude={"student_id"})).model_dump()
+        if self._collection.find_one({"name": new_student["name"]}):
             raise StudentAlreadyExistsError("Student with this name already exists")
 
-        result = self._collection.insert_one(payload.model_dump())
+        result = self._collection.insert_one(new_student)
         created = self._collection.find_one({"_id": result.inserted_id})
-        return self._serialize(created)
+        return self._serialize(created).model_dump()
 
-    def get_all_students(self) -> list[StudentResponse]:
-        return [self._serialize(student) for student in self._collection.find()]
+    def get_all_students(self) -> list[dict]:
+        students = [self._serialize(student).model_dump() for student in self._collection.find()]
+        return students
 
-    def update_student(self, name: str, payload: StudentUpdate) -> StudentResponse:
+    def get_student(self, name: str) -> dict[str, Any]:
+        student = self._collection.find_one({"name": name})
+        if student is None:
+            raise StudentNotFoundError("Student not found")
+        return self._serialize(student).model_dump()
+
+    def update_student(self, name: str, payload: StudentUpdate) -> StudentDTO:
         update_data = {
             key: value for key, value in payload.model_dump().items() if value is not None
         }

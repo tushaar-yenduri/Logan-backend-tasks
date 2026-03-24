@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.models.students_model import StudentCreate, StudentResponse, StudentUpdate
+from app.models.students_model import StudentDTO, StudentUpdate
 from app.services.students_service import (
     NoUpdateFieldsError,
     StudentAlreadyExistsError,
@@ -11,22 +11,18 @@ from app.services.students_service import (
 
 router = APIRouter()
 
-
-@router.get("/")
-def root() -> dict[str, str]:
-    return {
-        "message": "Student CRUD API is running. Open /docs for Swagger UI.",
-    }
-
-
-@router.get("/students")
-def list_students(service: StudentService = Depends(get_student_service)) -> dict[str, list[StudentResponse]]:
-    return {"students": service.get_all_students()}
-
+@router.get("/students/{name}")
+def get_student(
+    name: str, service: StudentService = Depends(get_student_service)
+) -> dict[str, object]:
+    try:
+        return service.get_student(name)
+    except StudentNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
 
 @router.post("/students")
 def create_student(
-    student: StudentCreate, service: StudentService = Depends(get_student_service)
+    student: StudentDTO, service: StudentService = Depends(get_student_service)
 ) -> dict[str, object]:
     try:
         created_student = service.create_student(student)
