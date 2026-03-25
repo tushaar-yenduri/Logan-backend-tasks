@@ -94,8 +94,14 @@ def _get_student_response(
 ) -> JSON_RESPONSE:
     """Load a student record or raise a 404."""
 
+def _get_student_response(
+    student_name: str, student_service: StudentService
+) -> JSON_RESPONSE:
+    """Load a student record or raise a 404."""
+
     try:
-        return student_service.get_student(student_name)
+        student = student_service.get_student(student_name)
+        return {"student": student}  
     except StudentNotFoundError as exception:
         _handle_student_not_found(exception)
 

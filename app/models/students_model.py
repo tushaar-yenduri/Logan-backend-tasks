@@ -12,13 +12,12 @@ class StudentDTO(BaseModel):
     student_id: str | None = Field(
         default=None,
         description="MongoDB object id",
-        example="643f463ce8f1c1d3dc5b1a72",
     )
-    name: NameType = Field(..., example="John Doe")
-    age: PositiveInt = Field(..., example=20)
-    course: CourseType = Field(..., example="Biology 101")
+    name: NameType = Field(...)
+    age: PositiveInt = Field(...)
+    course: CourseType = Field(...)
     skills: list[SkillType] = Field(
-        ..., min_items=1, example=["Python", "APIs", "Databases"]
+        ..., min_length=1
     )
 
     @field_validator("skills", mode="before")
@@ -66,11 +65,9 @@ class StudentCreate(BaseModel):
 
 
 class StudentUpdate(BaseModel):
-    age: PositiveInt | None = Field(None, example=21)
-    course: CourseType | None = Field(None, example="Algorithms")
-    skills: list[SkillType] | None = Field(
-        None, example=["Python", "Testing"]
-    )
+    age: PositiveInt | None = Field(None)
+    course: CourseType | None = Field(None)
+    skills: list[SkillType] | None = Field(None)
 
     @field_validator("skills", mode="before")
     @staticmethod
