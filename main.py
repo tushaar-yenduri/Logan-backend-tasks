@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from pymongo import MongoClient
 
+from app.api import auth as auth_api
 from app.api import students as students_api
 from app.services.students_service import configure_student_service
 
@@ -13,4 +14,5 @@ db = client["school_db"]
 students_collection = db["students"]
 
 configure_student_service(students_collection)
+app.include_router(auth_api.router)
 app.include_router(students_api.router)
